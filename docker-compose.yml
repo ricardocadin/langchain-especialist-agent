@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: postgres_agent_search
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agent_search
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_agent_search_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_search"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  bootstrap_vector_ext:
+    image: pgvector/pgvector:pg17
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: postgres
+    entrypoint: ["psql"]
+    command:
+      - "postgresql://postgres@postgres:5432/agent_search"
+      - "-v"
+      - "ON_ERROR_STOP=1"
+      - "-c"
+      - "CREATE EXTENSION IF NOT EXISTS vector;"
+    restart: "no"
+
+volumes:
+  postgres_agent_search_data:
